@@ -59,23 +59,24 @@ def __decision_plot_matplotlib(
     color_bar,
     auto_size_plot,
     title,
-    show,
+    return_objects,
     legend_labels,
     legend_location,
 ):
     """matplotlib rendering for decision_plot()"""
 
-    # image size
+    # # image size
     row_height = 0.4
-    if auto_size_plot:
-        pl.gcf().set_size_inches(8, feature_display_count * row_height + 1.5)
+    # if auto_size_plot:
+    #     pl.gcf().set_size_inches(8, feature_display_count * row_height + 1.5)
+    fig, ax = pl.subplots(figsize=(8, feature_display_count * row_height + 1.5))
 
     # draw vertical line indicating center
-    pl.axvline(x=base_value, color="#999999", zorder=-1)
+    ax.axvline(x=base_value, color="#999999", zorder=-1)
 
     # draw horizontal dashed lines for each feature contribution
     for i in range(1, feature_display_count):
-        pl.axhline(y=i, color=y_demarc_color, lw=0.5, dashes=(1, 5), zorder=-1)
+        ax.axhline(y=i, color=y_demarc_color, lw=0.5, dashes=(1, 5), zorder=-1)
 
     # initialize highlighting
     linestyle = np.array("-", dtype=np.object)
@@ -86,7 +87,6 @@ def __decision_plot_matplotlib(
         linewidth[highlight] = 2
 
     # plot each observation's cumulative SHAP values.
-    ax = pl.gca()
     ax.set_xlim(xlim)
     m = cm.ScalarMappable(cmap=plot_color)
     m.set_clim(xlim)
@@ -138,10 +138,10 @@ def __decision_plot_matplotlib(
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
     ax.tick_params(color=axis_color, labelcolor=axis_color, labeltop=True)
-    pl.yticks(np.arange(feature_display_count) + 0.5, feature_names, fontsize=fontsize)
+    ax.set_yticks(np.arange(feature_display_count) + 0.5, feature_names, fontsize=fontsize)
     ax.tick_params("x", labelsize=11)
-    pl.ylim(0, feature_display_count)
-    pl.xlabel(labels["MODEL_OUTPUT"], fontsize=13)
+    ax.set_ylim(0, feature_display_count)
+    ax.set_xlabel(labels["MODEL_OUTPUT"], fontsize=13)
 
     # draw the color bar - must come after axes styling
     if color_bar:
@@ -149,7 +149,7 @@ def __decision_plot_matplotlib(
         m.set_array(np.array([0, 1]))
 
         # place the colorbar
-        pl.ylim(0, feature_display_count + 0.25)
+        ax.set_ylim(0, feature_display_count + 0.25)
         ax_cb = ax.inset_axes([xlim[0], feature_display_count, xlim[1] - xlim[0], 0.25], transform=ax.transData)
         cb = pl.colorbar(m, ticks=[0, 1], orientation="horizontal", cax=ax_cb)
         cb.set_ticklabels([])
@@ -170,8 +170,13 @@ def __decision_plot_matplotlib(
     if legend_labels is not None:
         ax.legend(handles=lines, labels=legend_labels, loc=legend_location)
 
-    if show:
+    if return_objects:
+        pl.close()
+        fig.tight_layout()
+        return fig
+    else:
         pl.show()
+        return None
 
 
 class DecisionPlotResult:
@@ -180,7 +185,7 @@ class DecisionPlotResult:
     The class attributes can be used to apply the same scale and feature ordering to other decision plots.
     """
 
-    def __init__(self, base_value, shap_values, feature_names, feature_idx, xlim):
+    def __init__(self, base_value, shap_values, feature_names, feature_idx, xlim, fig):
         """
         Example
         -------
@@ -211,12 +216,15 @@ class DecisionPlotResult:
         xlim : tuple[float, float]
             The x-axis limits. This attributed can be used to specify the same x-axis in multiple decision plots.
 
+        fig: pl.Figure
+            The pyplot.Figure object
         """
         self.base_value = base_value
         self.shap_values = shap_values
         self.feature_names = feature_names
         self.feature_idx = feature_idx
         self.xlim = xlim
+        self.fig = fig
 
 
 def decision(
@@ -236,7 +244,6 @@ def decision(
     auto_size_plot=True,
     title=None,
     xlim=None,
-    show=True,
     return_objects=False,
     ignore_warnings=False,
     new_base_value=None,
@@ -293,33 +300,32 @@ def decision(
         
     y_demarc_color : str or int
         Color used to draw feature demarcation lines on the y-axis.
-        
+
     alpha : float
         Alpha blending value in [0, 1] used to draw plot lines.
-        
+
     color_bar : bool
         Whether to draw the color bar.
-        
+
     auto_size_plot : bool
-        Whether to automatically size the matplotlib plot to fit the number of features displayed. If `False`, 
+        Whether to automatically size the matplotlib plot to fit the number of features displayed. If `False`,
         specify the plot size using matplotlib before calling this function.
-        
+
     title : str
         Title of the plot.
-        
+
     xlim: tuple[float, float]
         The extents of the x-axis (e.g. (-1.0, 1.0)). If not specified, the limits are determined by the
         maximum/minimum predictions centered around base_value when link='identity'. When link='logit', the
         x-axis extents are (0, 1) centered at 0.5. x_lim values are not transformed by the link function. This
         argument is provided to simplify producing multiple plots on the same scale for comparison.
 
-    show : bool
-        Whether to automatically display the plot.
-
     return_objects : bool
         Whether to return a DecisionPlotResult object containing various plotting features. This can be used to
         generate multiple decision plots using the same feature ordering and scale.
-        
+        SHENDIN: If True, the DecisionPlotResult will include the pl.Figure object. Default value False
+        means call pl.show() to display interactively.
+
     ignore_warnings : bool
         Plotting many data points or too many features at a time may be slow, or may create very large plots. Set
         this argument to `True` to override hard-coded limits that prevent plotting large amounts of data.
@@ -529,7 +535,7 @@ def decision(
     if plot_color is None:
         plot_color = colors.red_blue
 
-    __decision_plot_matplotlib(
+    fig = __decision_plot_matplotlib(
         base_value,
         cumsum,
         ascending,
@@ -545,15 +551,15 @@ def decision(
         color_bar,
         auto_size_plot,
         title,
-        show,
+        return_objects,
         legend_labels,
         legend_location,
     )
 
     if not return_objects:
         return None
-
-    return DecisionPlotResult(base_value_saved, shap_values, feature_names, feature_idx, xlim)
+    else:
+        return DecisionPlotResult(base_value_saved, shap_values, feature_names, feature_idx, xlim, fig)
 
 
 def multioutput_decision(base_values, shap_values, row_index, **kwargs) -> Union[DecisionPlotResult, None]:
