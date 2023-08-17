@@ -129,10 +129,10 @@ def __decision_plot_matplotlib(
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
     ax.tick_params(color=axis_color, labelcolor=axis_color, labeltop=True)
-    ax.yticks(np.arange(feature_display_count) + 0.5, feature_names, fontsize=fontsize)
+    ax.set_yticks(np.arange(feature_display_count) + 0.5, feature_names, fontsize=fontsize)
     ax.tick_params("x", labelsize=11)
-    ax.ylim(0, feature_display_count)
-    ax.xlabel(labels["MODEL_OUTPUT"], fontsize=13)
+    ax.set_ylim(0, feature_display_count)
+    ax.set_xlabel(labels["MODEL_OUTPUT"], fontsize=13)
 
     # draw the color bar - must come after axes styling
     if color_bar:
@@ -140,7 +140,7 @@ def __decision_plot_matplotlib(
         m.set_array(np.array([0, 1]))
 
         # place the colorbar
-        ax.ylim(0, feature_display_count + 0.25)
+        ax.set_ylim(0, feature_display_count + 0.25)
         ax_cb = ax.inset_axes([xlim[0], feature_display_count, xlim[1] - xlim[0], 0.25], transform=ax.transData)
         cb = pl.colorbar(m, ticks=[0, 1], orientation="horizontal", cax=ax_cb)
         cb.set_ticklabels([])
